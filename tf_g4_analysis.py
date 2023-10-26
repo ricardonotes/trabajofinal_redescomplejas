@@ -18,3 +18,22 @@ restaurants.head()
 #Lectura de reviews de restaurantes de Lima
 reviews = pd.read_csv('./data/data/reviews.csv', sep=',',engine='python')
 reviews.head()
+
+
+"""### Análisis exploratorio de datos
+
+Entendiendo el data set y distribuciones
+"""
+
+restaurants.shape
+
+restaurants.info()
+
+restaurants.describe()
+
+reviews.shape
+
+reviews.info()
+
+reviews.describe()
+
