@@ -69,3 +69,117 @@ fig = px.bar(dfg, x='name', y = 'count',title="Top 10 Restaurantes con mayor nú
 fig.layout.yaxis.title.text = 'count'
 fig.show()
 
+"""### Preprocesamiento de reviews"""
+
+comment="No puedo expresar lo bueno era el lugar. Pasamos la mayoría de nuestro viaje probar los restaurantes en Miraflores, y una vez que encontramos este Barranco mi novio y yo preguntamos por qué no comimos en estas zonas anteriormente. Para empezar, el precio es justo. Las tapas muy razonables hecha con ingredientes de alta calidad. Tienen una gran lista de vinos (a diferencia de muchos otros lugares en el Perú) y aquellos que están todos a un precio muy razonable. La comida fue perfecto - para bajo el equivalente de 40 dólares, compartimos Octopus, la causa, 6 de sus mini tapas de tostadas con varias coberturas (todo de pescado de salchicha de sangre de setas - cada una deliciosa), y el postre de pastel de chocolate! (y, por supuesto, vino). he comido en el país vasco y la fusión era perfecta, se puede ver la influencia peruana en los platos tradicionales y nos encantaron todos los sabores. Es un lugar íntimo, sin duda genial para una fecha y luego puedes ir a uno de los bares de la zona tras otra bebida! era nuestra última noche perfecta en Lima."
+comment
+
+"""Se intala librería pysentiemiento para utilizar una de sus funcionalidades de preprocesamiento (tratar, reducir caracteres repetidos, hashtags, emojis, risas, etc)."""
+
+!python3 -m pip install pysentimiento
+
+from pysentimiento.preprocessing import preprocess_tweet
+
+preprocess_tweet("Ya lo tenía en la mira a este pulpito, no quedó nada!!! jajajaja, estuvo muy rico Gracias a todos mis amigos de Idat, la pasamos súper. Y gracias a la Cabrera por el buen servicio pronto estaremos regresando")
+
+total_filtered['review_prep'] = total_filtered['review'].apply(lambda x: preprocess_tweet(x, shorten=2))
+
+total_filtered
+
+"""Ejemplo de funcionamiento de librería.
+Caso: Interpretar emojis
+"""
+
+total_filtered[total_filtered['id_review']=='R370359']['review_prep'].values
+
+"""Limpieza de caracteres especiales"""
+
+import re
+def clean(text):
+# Remueve todos los caracteres especiales dejando solo los alfabeticos
+    text = re.sub(r'[^\w\sñáéíóúüÁÉÍÓÚÜ]', ' ', text)
+    return text.lower()
+
+total_filtered['review_prep_clean']= total_filtered['review_prep'].apply(clean)
+
+#Para poder descargar contenido de nltk
+import ssl
+
+try:
+    _create_unverified_https_context = ssl._create_unverified_context
+except AttributeError:
+    pass
+else:
+    ssl._create_default_https_context = _create_unverified_https_context
+
+import nltk
+nltk.download('punkt')
+from nltk.tokenize import word_tokenize
+from nltk import pos_tag
+nltk.download('stopwords')
+from nltk.corpus import stopwords
+nltk.download('wordnet')
+from nltk.corpus import wordnet
+nltk.download('averaged_perceptron_tagger')
+
+#Removiendo stopwords
+def token_stop(text):
+    tags = word_tokenize(text)
+    stop_words=set(stopwords.words('spanish'))
+    newlist = " "
+    for word in tags:
+        if word not in stop_words:
+          newlist += word + " "
+    return newlist
+
+"""Se quitan las palabras vacías para análisis de sentimiento"""
+
+total_filtered['review_prep_clean_wostop'] = total_filtered['review_prep_clean'].apply(token_stop)
+
+"""Análisis de sentimiento con pysentimiento"""
+
+from pysentimiento import create_analyzer
+analyzer = create_analyzer(task="sentiment", lang="es")
+
+"""Ejemplo de análisis de sentimiento"""
+
+analyzer.predict(comment)
+
+"""Definimos la función que se aplicará sobre los reviews"""
+
+def sentiment_analysis(text):
+    result= analyzer.predict(text)
+    return result.output
+
+restaurant_target = total_filtered[total_filtered['id']==17503]
+restaurant_target.shape
+
+restaurant_target['Sentiment']=restaurant_target['review_prep_clean'].apply(sentiment_analysis)
+
+restaurant_target[['id','Sentiment','review_prep_clean']]
+
+df = pd.DataFrame()
+
+a=restaurant_target.groupby(['id','Sentiment'])['review_prep_clean'].count()
+
+df=a.to_frame().reset_index()
+
+df
+
+max_x = dict(df.loc[df['review_prep_clean'].idxmax()])
+
+tipo_max=max_x['Sentiment']
+tipo_max
+
+df_to_count=restaurant_target[restaurant_target['Sentiment']==tipo_max]
+
+# Función para limpiar y tokenizar un comentario
+def preprocess_text(text):
+    text = text.lower()  # Convertir a minúsculas
+    words = word_tokenize(text)  # Tokenizar palabras
+    words = [word for word in words if word.isalpha()]  # Eliminar signos de puntuación
+    words = [word for word in words if word not in stopwords.words('spanish')]  # Eliminar stop words en español
+    return words
+
+# Aplicar el preprocesamiento a cada comentario en el DataFrame
+df_to_count['review_prep_clean_token'] = df_to_count['review_prep_clean'].apply(preprocess_text)
