@@ -37,3 +37,35 @@ reviews.info()
 
 reviews.describe()
 
+"""### Gráficos"""
+
+#Seleccionamos sólo los que tienen un distrito definido en Lima
+restaurants = restaurants[restaurants['IDDIST']!='Out']
+
+restaurants.shape
+
+import plotly.express as px
+
+fig = px.histogram(restaurants, x="district",title="Cantidad de restaurantes por distrito")
+fig.show()
+
+#juntando ambos dataset para explorar restaurant con mayor cantidad de reviews
+total = restaurants.merge(reviews, left_on='id', right_on='service')
+
+total.info()
+
+total_filtered=total[total['review'].notnull()]
+
+total_filtered.info()
+
+fig = px.histogram(total_filtered, x="district",title="Distritos con mayor número de reviews")
+fig.show()
+
+#Calculando restaurantes con mayor número de reviews en Lima
+dfg = total_filtered.groupby(['name']).size().to_frame().sort_values([0], ascending = False).head(10).reset_index()
+dfg.columns = ['name', 'count']
+
+fig = px.bar(dfg, x='name', y = 'count',title="Top 10 Restaurantes con mayor número de reviews en Lima")
+fig.layout.yaxis.title.text = 'count'
+fig.show()
+
