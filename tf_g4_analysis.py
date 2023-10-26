@@ -183,3 +183,60 @@ def preprocess_text(text):
 
 # Aplicar el preprocesamiento a cada comentario en el DataFrame
 df_to_count['review_prep_clean_token'] = df_to_count['review_prep_clean'].apply(preprocess_text)
+
+from collections import Counter
+
+all_words = [word for words in df_to_count['review_prep_clean_token'] for word in words]
+
+# Calcular la frecuencia de palabras y obtener las 3 palabras más comunes
+word_frequency = Counter(all_words)
+top_3_words = word_frequency.most_common(3)
+
+# Imprimir el top 3 de palabras más comunes
+print("Top 3 palabras más comunes:")
+for word, frequency in top_3_words:
+    print(f"{word}: {frequency}")
+
+def top3WordsByRestaurant(df,id):
+    #Filtramos el dataset sólo para el restaurante
+    df_target=df[df['id']==id]
+    #Cantidad de reviews
+    print(df_target.shape)
+    #aplicamos el análisis de sentimiento
+    df_target['Sentiment']=df_target['review_prep_clean'].apply(sentiment_analysis)
+    #Obtenemos dataframe acumulado por tipo de sentimiento
+    df_resumen=df_target.groupby(['id','Sentiment'])['review_prep_clean'].count().to_frame().reset_index()
+    #Obtenemos valores máximos
+    resumen_max_x = dict(df_resumen.loc[df_resumen['review_prep_clean'].idxmax()])
+    #Obtenemos el Sentimiento predominante
+    tipo_sent_max=resumen_max_x['Sentiment']
+    print(tipo_sent_max)
+    #Filtramos el dataset con el tipo de sentimiento predominante
+    df_target_to_count=df_target[df_target['Sentiment']==tipo_sent_max]
+    #Preprocesamos los reviews
+    df_target_to_count['review_prep_clean_token'] = df_target_to_count['review_prep_clean'].apply(preprocess_text)
+    #Consolidación de palabras
+    all_words = [word for words in df_target_to_count['review_prep_clean_token'] for word in words]
+    # Calcular la frecuencia de palabras y obtener las 3 palabras más comunes
+    word_frequency = Counter(all_words)
+    top_3_words = word_frequency.most_common(3)
+    # Imprimir el top 3 de palabras más comunes
+    print("Top 3 palabras más comunes:")
+    return dict(top_3_words)
+
+#Restaurant Bembos
+result=top3WordsByRestaurant(total_filtered,17503)
+
+result
+
+#Restaurant Fridays Puruchuco
+result=top3WordsByRestaurant(total_filtered,200275)
+result
+
+#Restaurant El hornero
+result=top3WordsByRestaurant(total_filtered,270316)
+result
+
+#Restaurant Papos Chicken
+result=top3WordsByRestaurant(total_filtered,276372)
+result
